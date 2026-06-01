@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0f1115">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="30s">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>30s Timer</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --track: #262b36;
+    --accent: #4ade80;
+    --accent-done: #f87171;
+    --text: #f4f6fb;
+    --muted: #8b93a7;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%;
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+    overflow: hidden; overscroll-behavior: none;
+    user-select: none; -webkit-user-select: none;
+  }
+  body {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: clamp(28px, 7vh, 64px);
+    padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
+  }
+  .dial { position: relative; width: min(78vw, 60vh); aspect-ratio: 1; }
+  svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .track { fill: none; stroke: var(--track); stroke-width: 7; }
+  .progress {
+    fill: none; stroke: var(--accent); stroke-width: 7; stroke-linecap: round;
+    transition: stroke .25s ease;
+  }
+  .readout {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .count {
+    font-size: clamp(64px, 26vw, 200px);
+    font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+  }
+  .label { margin-top: 10px; font-size: clamp(13px, 3.6vw, 18px); color: var(--muted); letter-spacing: .12em; text-transform: uppercase; }
+  .done .count { color: var(--accent-done); }
+  .done .progress { stroke: var(--accent-done); }
+  button {
+    appearance: none; border: 0; cursor: pointer;
+    background: var(--accent); color: #07120a;
+    font-size: clamp(18px, 5vw, 24px); font-weight: 700;
+    padding: 18px 0; width: min(78vw, 60vh);
+    border-radius: 999px; letter-spacing: .02em;
+    transition: background .2s ease, transform .05s ease;
+  }
+  button:active { transform: scale(.98); }
+  button.running { background: var(--track); color: var(--text); }
+  button.done { background: var(--accent-done); color: #1a0707; }
+</style>
+</head>
+<body>
+  <div class="dial" id="dial">
+    <svg viewBox="0 0 100 100">
+      <circle class="track" cx="50" cy="50" r="45"></circle>
+      <circle class="progress" id="ring" cx="50" cy="50" r="45"></circle>
+    </svg>
+    <div class="readout">
+      <div class="count" id="count">30</div>
+      <div class="label" id="label">sekundi</div>
+    </div>
+  </div>
+  <button id="btn">Start</button>
+
+<script>
+(() => {
+  "use strict";
+  const DURATION = 30;
+  const R = 45, C = 2 * Math.PI * R;
+
+  const elDial  = document.getElementById("dial");
+  const elRing   = document.getElementById("ring");
+  const elCount  = document.getElementById("count");
+  const elLabel  = document.getElementById("label");
+  const btn      = document.getElementById("btn");
+
+  elRing.style.strokeDasharray = C;
+
+  let state = "idle";      // idle | running | done
+  let endTime = 0;
+  let rafId = null;
+  let audioCtx = null;
+  let wakeLock = null;
+
+  function render(remaining) {
+    const frac = Math.max(0, Math.min(1, remaining / DURATION));
+    elRing.style.strokeDashoffset = C * (1 - frac);
+    elCount.textContent = state === "done" ? "0" : Math.ceil(remaining);
+  }
+
+  function setState(next) {
+    state = next;
+    elDial.classList.toggle("done", next === "done");
+    if (next === "idle") {
+      btn.textContent = "Start"; btn.className = "";
+      elLabel.textContent = "sekundi";
+      render(DURATION);
+    } else if (next === "running") {
+      btn.textContent = "Stop"; btn.className = "running";
+      elLabel.textContent = "preostalo";
+    } else if (next === "done") {
+      btn.textContent = "Ponovi"; btn.className = "done";
+      elLabel.textContent = "gotovo";
+    }
+  }
+
+  function tick() {
+    const remaining = (endTime - performance.now()) / 1000;
+    if (remaining <= 0) { render(0); finish(); return; }
+    render(remaining);
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function start() {
+    initAudio();
+    requestWakeLock();
+    endTime = performance.now() + DURATION * 1000;
+    setState("running");
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function reset() {
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = null;
+    releaseWakeLock();
+    setState("idle");
+  }
+
+  function finish() {
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = null;
+    releaseWakeLock();
+    setState("done");
+    beep();
+    if (navigator.vibrate) navigator.vibrate([180, 90, 180, 90, 320]);
+  }
+
+  // --- audio (created on user gesture so mobile allows playback) ---
+  function initAudio() {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+    } catch (e) { /* no audio available */ }
+  }
+  function beep() {
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    [0, 0.22, 0.44].forEach((t, i) => {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = "sine";
+      o.frequency.value = i === 2 ? 1175 : 880;
+      g.gain.setValueAtTime(0.0001, now + t);
+      g.gain.exponentialRampToValueAtTime(0.4, now + t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + t + 0.18);
+      o.connect(g).connect(audioCtx.destination);
+      o.start(now + t); o.stop(now + t + 0.2);
+    });
+  }
+
+  // --- wake lock (keep screen on during countdown) ---
+  async function requestWakeLock() {
+    try {
+      if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen");
+    } catch (e) { /* ignore */ }
+  }
+  function releaseWakeLock() {
+    try { if (wakeLock) { wakeLock.release(); wakeLock = null; } } catch (e) {}
+  }
+
+  // re-acquire wake lock + resync if app returns to foreground mid-run
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    if (state === "running") {
+      requestWakeLock();
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(tick);
+    }
+  });
+
+  btn.addEventListener("click", () => {
+    if (state === "running") reset();
+    else start();           // idle or done -> start fresh
+  });
+
+  setState("idle");
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+  }
+})();
+</script>
+</body>
+</html>
