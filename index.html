@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="hr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
@@ -74,7 +74,7 @@
     </svg>
     <div class="readout">
       <div class="count" id="count">30</div>
-      <div class="label" id="label">sekundi</div>
+      <div class="label" id="label">seconds</div>
     </div>
   </div>
   <button id="btn">Start</button>
@@ -110,14 +110,14 @@
     elDial.classList.toggle("done", next === "done");
     if (next === "idle") {
       btn.textContent = "Start"; btn.className = "";
-      elLabel.textContent = "sekundi";
+      elLabel.textContent = "seconds";
       render(DURATION);
     } else if (next === "running") {
       btn.textContent = "Stop"; btn.className = "running";
-      elLabel.textContent = "preostalo";
+      elLabel.textContent = "remaining";
     } else if (next === "done") {
-      btn.textContent = "Ponovi"; btn.className = "done";
-      elLabel.textContent = "gotovo";
+      btn.textContent = "Restart"; btn.className = "done";
+      elLabel.textContent = "done";
     }
   }
 

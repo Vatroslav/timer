@@ -1,8 +1,8 @@
 {
   "name": "30s Timer",
   "short_name": "30s",
-  "description": "Jednostavan timer od 30 sekundi.",
-  "lang": "hr",
+  "description": "A simple 30-second timer.",
+  "lang": "en",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

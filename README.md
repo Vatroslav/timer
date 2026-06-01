@@ -1,29 +1,29 @@
 # 30s Timer
 
-Jednostavan timer od 30 sekundi. PWA - radi u browseru i može se dodati na početni zaslon telefona gdje se ponaša kao app (ikona, fullscreen, radi offline).
+A simple 30-second timer. It's a PWA - it runs in the browser and can be added to your phone's home screen, where it behaves like an app (icon, fullscreen, works offline).
 
-## Korištenje
+## Usage
 
-Otvori na telefonu: **https://vatroslav.github.io/timer/**
+Open on your phone: **https://vatroslav.github.io/timer/**
 
-Da dobiješ ikonu na home screenu:
-- **Android (Chrome):** izbornik (⋮) → *Dodaj na početni zaslon*
+To get a home-screen icon:
+- **Android (Chrome):** menu (⋮) → *Add to Home screen*
 - **iPhone (Safari):** Share → *Add to Home Screen*
 
-Nakon toga se otvara fullscreen, bez adresne trake, i radi bez interneta.
+After that it opens fullscreen, without an address bar, and works without an internet connection.
 
-## Funkcije
+## Features
 
-- Odbrojavanje 30s s vizualnim prstenom
-- Na nuli: zvučni signal + vibracija (Android)
-- Ekran ostaje upaljen dok timer radi (Wake Lock)
-- Start / Stop / Ponovi na jednom gumbu
+- 30s countdown with a visual progress ring
+- At zero: audible beep + vibration (Android)
+- Screen stays awake while the timer runs (Wake Lock)
+- Single button: Start / Stop / Restart
 
-## Tehnički
+## Technical
 
-Čisti HTML/CSS/JS, bez buildanja i bez ovisnosti. Hosta se na GitHub Pages iz `main` brancha.
+Plain HTML/CSS/JS, no build step and no dependencies. Hosted on GitHub Pages from the `main` branch.
 
-- `index.html` - cijela app (UI + logika)
+- `index.html` - the whole app (UI + logic)
 - `manifest.webmanifest` - PWA manifest
-- `sw.js` - service worker za offline rad
-- `icon-*.png` - ikone aplikacije
+- `sw.js` - service worker for offline support
+- `icon-*.png` - app icons
