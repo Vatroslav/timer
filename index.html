@@ -100,8 +100,11 @@
   let wakeLock = null;
   let signalled = false;   // has the 0-mark beep/Restart transition fired this run
 
-  function drawRing(frac) {
-    elRing.style.strokeDashoffset = C * (1 - Math.max(0, Math.min(1, frac)));
+  function drawRing(frac, reverse) {
+    const f = Math.max(0, Math.min(1, frac));
+    // reverse grows the arc from the same point the countdown emptied toward,
+    // so the red fill sweeps the same rotational way the green ring did
+    elRing.style.strokeDashoffset = reverse ? C * (1 + f) : C * (1 - f);
   }
 
   function setState(next) {
@@ -133,14 +136,14 @@
       if (!signalled) reachZero();
       const over = elapsed - DURATION;
       if (over >= DURATION) {                 // overtime complete: red ring full
-        drawRing(1);
+        drawRing(1, true);
         elCount.textContent = DURATION;
         releaseWakeLock();
         rafId = null;
         return;
       }
-      // overtime: red ring fills from empty to full, mirroring the green emptying
-      drawRing(over / DURATION);
+      // overtime: red ring fills, sweeping the same way the green countdown emptied
+      drawRing(over / DURATION, true);
       elCount.textContent = Math.floor(over);
     }
     rafId = requestAnimationFrame(tick);
