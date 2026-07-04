@@ -93,46 +93,67 @@
 
   elRing.style.strokeDasharray = C;
 
-  let state = "idle";      // idle | running | done
-  let endTime = 0;
+  let state = "idle";      // idle | running | overtime
+  let startTime = 0;
   let rafId = null;
   let audioCtx = null;
   let wakeLock = null;
+  let signalled = false;   // has the 0-mark beep/Restart transition fired this run
 
-  function render(remaining) {
-    const frac = Math.max(0, Math.min(1, remaining / DURATION));
-    elRing.style.strokeDashoffset = C * (1 - frac);
-    elCount.textContent = state === "done" ? "0" : Math.ceil(remaining);
+  function drawRing(frac) {
+    elRing.style.strokeDashoffset = C * (1 - Math.max(0, Math.min(1, frac)));
   }
 
   function setState(next) {
     state = next;
-    elDial.classList.toggle("done", next === "done");
+    elDial.classList.toggle("done", next === "overtime");
     if (next === "idle") {
       btn.textContent = "Start"; btn.className = "";
       elLabel.textContent = "seconds";
-      render(DURATION);
+      drawRing(1);
+      elCount.textContent = DURATION;
     } else if (next === "running") {
       btn.textContent = "Stop"; btn.className = "running";
       elLabel.textContent = "remaining";
-    } else if (next === "done") {
+    } else if (next === "overtime") {
       btn.textContent = "Restart"; btn.className = "done";
-      elLabel.textContent = "done";
+      elLabel.textContent = "overtime";
     }
   }
 
   function tick() {
-    const remaining = (endTime - performance.now()) / 1000;
-    if (remaining <= 0) { render(0); finish(); return; }
-    render(remaining);
+    const elapsed = (performance.now() - startTime) / 1000;
+    if (elapsed < DURATION) {
+      // counting down: green ring empties from full to empty
+      const remaining = DURATION - elapsed;
+      drawRing(remaining / DURATION);
+      elCount.textContent = Math.ceil(remaining);
+    } else {
+      // reached 0: fire the beep + Restart transition once, then keep going
+      if (!signalled) reachZero();
+      const over = elapsed - DURATION;
+      if (over >= DURATION) {                 // overtime complete: red ring full
+        drawRing(1);
+        elCount.textContent = DURATION;
+        releaseWakeLock();
+        rafId = null;
+        return;
+      }
+      // overtime: red ring fills from empty to full, mirroring the green emptying
+      drawRing(over / DURATION);
+      elCount.textContent = Math.floor(over);
+    }
     rafId = requestAnimationFrame(tick);
   }
 
   function start() {
     initAudio();
     requestWakeLock();
-    endTime = performance.now() + DURATION * 1000;
+    startTime = performance.now();
+    signalled = false;
     setState("running");
+    drawRing(1);
+    elCount.textContent = DURATION;
     rafId = requestAnimationFrame(tick);
   }
 
@@ -140,14 +161,14 @@
     if (rafId) cancelAnimationFrame(rafId);
     rafId = null;
     releaseWakeLock();
+    signalled = false;
     setState("idle");
   }
 
-  function finish() {
-    if (rafId) cancelAnimationFrame(rafId);
-    rafId = null;
-    releaseWakeLock();
-    setState("done");
+  // reached 0: sound + Restart button appear, countdown flips into red-fill overtime
+  function reachZero() {
+    signalled = true;
+    setState("overtime");
     beep();
     if (navigator.vibrate) navigator.vibrate([180, 90, 180, 90, 320]);
   }
@@ -188,16 +209,16 @@
   // re-acquire wake lock + resync if app returns to foreground mid-run
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible") return;
-    if (state === "running") {
+    if ((state === "running" || state === "overtime") && rafId) {
       requestWakeLock();
-      if (rafId) cancelAnimationFrame(rafId);
+      cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(tick);
     }
   });
 
   btn.addEventListener("click", () => {
     if (state === "running") reset();
-    else start();           // idle or done -> start fresh
+    else start();           // idle or overtime -> start fresh
   });
 
   setState("idle");
