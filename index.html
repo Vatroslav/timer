@@ -150,6 +150,7 @@
   }
 
   function start() {
+    if (rafId) cancelAnimationFrame(rafId);  // kill any live loop (e.g. Restart during overtime)
     initAudio();
     requestWakeLock();
     startTime = performance.now();
