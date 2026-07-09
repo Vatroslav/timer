@@ -98,7 +98,7 @@
   let rafId = null;
   let audioCtx = null;
   let wakeLock = null;
-  let signalled = false;   // has the 0-mark beep/Restart transition fired this run
+  let signalled = false;   // has the 0-mark beep/overtime transition fired this run
 
   function drawRing(frac, reverse) {
     const f = Math.max(0, Math.min(1, frac));
@@ -119,7 +119,7 @@
       btn.textContent = "Stop"; btn.className = "running";
       elLabel.textContent = "remaining";
     } else if (next === "overtime") {
-      btn.textContent = "Restart"; btn.className = "done";
+      btn.textContent = "Stop"; btn.className = "done";
       elLabel.textContent = "overtime";
     }
   }
@@ -132,7 +132,7 @@
       drawRing(remaining / DURATION);
       elCount.textContent = Math.ceil(remaining);
     } else {
-      // reached 0: fire the beep + Restart transition once, then keep going
+      // reached 0: fire the beep + overtime transition once, then keep going
       if (!signalled) reachZero();
       const over = elapsed - DURATION;
       if (over >= DURATION) {                 // overtime complete: red ring full
@@ -150,7 +150,7 @@
   }
 
   function start() {
-    if (rafId) cancelAnimationFrame(rafId);  // kill any live loop (e.g. Restart during overtime)
+    if (rafId) cancelAnimationFrame(rafId);  // kill any live loop before starting fresh
     initAudio();
     requestWakeLock();
     startTime = performance.now();
@@ -169,7 +169,7 @@
     setState("idle");
   }
 
-  // reached 0: sound + Restart button appear, countdown flips into red-fill overtime
+  // reached 0: sound + Stop button appear, countdown flips into red-fill overtime
   function reachZero() {
     signalled = true;
     setState("overtime");
@@ -221,8 +221,8 @@
   });
 
   btn.addEventListener("click", () => {
-    if (state === "running") reset();
-    else start();           // idle or overtime -> start fresh
+    if (state === "idle") start();
+    else reset();           // running or overtime -> stop
   });
 
   setState("idle");

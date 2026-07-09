@@ -17,7 +17,7 @@ After that it opens fullscreen, without an address bar, and works without an int
 - 30s countdown with a visual progress ring
 - At zero: audible beep + vibration (Android)
 - Screen stays awake while the timer runs (Wake Lock)
-- Single button: Start / Stop / Restart
+- Single button: Start / Stop
 
 ## Technical
 

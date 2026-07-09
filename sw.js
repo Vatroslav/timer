@@ -1,4 +1,4 @@
-const CACHE = "timer30s-v4";
+const CACHE = "timer30s-v5";
 const ASSETS = [
   "./",
   "./index.html",
