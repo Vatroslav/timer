@@ -38,7 +38,7 @@
   .track { fill: none; stroke: var(--track); stroke-width: 7; }
   .progress {
     fill: none; stroke: var(--accent); stroke-width: 7; stroke-linecap: round;
-    transition: stroke .25s ease;
+    transition: stroke .6s ease;
   }
   .readout {
     position: absolute; inset: 0;
@@ -49,6 +49,7 @@
     font-size: clamp(64px, 26vw, 200px);
     font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums;
     letter-spacing: -0.03em;
+    transition: color .6s ease;
   }
   .label { margin-top: 10px; font-size: clamp(13px, 3.6vw, 18px); color: var(--muted); letter-spacing: .12em; text-transform: uppercase; }
   .done .count { color: var(--accent-done); }
@@ -59,7 +60,7 @@
     font-size: clamp(18px, 5vw, 24px); font-weight: 700;
     padding: 18px 0; width: min(78vw, 60vh);
     border-radius: 999px; letter-spacing: .02em;
-    transition: background .2s ease, transform .05s ease;
+    transition: background .6s ease, transform .05s ease;
   }
   button:active { transform: scale(.98); }
   button.running { background: var(--track); color: var(--text); }
@@ -135,11 +136,12 @@
       // reached 0: fire the beep + overtime transition once, then keep going
       if (!signalled) reachZero();
       const over = elapsed - DURATION;
-      if (over >= DURATION) {                 // overtime complete: red ring full
-        drawRing(1, true);
-        elCount.textContent = DURATION;
+      if (over >= DURATION) {                 // overtime complete: sound again, fade back to start
+        beep();
+        if (navigator.vibrate) navigator.vibrate([180, 90, 180, 90, 320]);
         releaseWakeLock();
         rafId = null;
+        setState("idle");                     // full green ring + green Start; CSS fades red -> green
         return;
       }
       // overtime: red ring fills, sweeping the same way the green countdown emptied
